@@ -51,12 +51,16 @@ public final class EchoServer {
         // Configure the server
         //NioEventLoopGroup若不指定参数，则DEFAULT_EVENT_LOOP_THREADS 默认为cpu核数 * 2.
         //BossGroup用来处理nio的Accept ,网上解释20171210hh
+        //NioEventLoopGroup实际就是Reactor线程池
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         //Worker处理nio的Read和Write事件，网上解释20171210hh
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
             ServerBootstrap b = new ServerBootstrap();
+            //builder模式
             b.group(bossGroup, workerGroup)
+                    //Channel实例化时会同时实例化ChannelPipeline，同时实例两个TailContext和HeadContext，双向链表，
+                    // 可见AbstractChannel抽象类中 20171213 hh
              .channel(NioServerSocketChannel.class)
              .option(ChannelOption.SO_BACKLOG, 100)
              .handler(new LoggingHandler(LogLevel.INFO))
@@ -68,6 +72,13 @@ public final class EchoServer {
                          p.addLast(sslCtx.newHandler(ch.alloc()));
                      }
                      //p.addLast(new LoggingHandler(LogLevel.INFO));
+                     /*
+                      * 20171213 hh
+                      * ChannelInboundHandler : 对从客户端发往服务器的报文进行处理，一般用来执行解码、读取客户端数据、进行业务处理等，
+                      *                         按照注册的先后顺序执行，如 Tail，在TailContext初始化时体现
+                      * ChannelOutboundHandler : 对从服务器发往客户端的报文进行处理，一般用来进行编码、发送报文到客户端。
+                      *                         按照注册的先后顺序逆序执行 如 Head，在HeadContext初始化时体现
+                     */
                      p.addLast(new EchoServerHandler());
                  }
              });
